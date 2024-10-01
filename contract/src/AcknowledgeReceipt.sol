@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {ERC721} from "openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721URIStorage} from "openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
 contract AcknowledgeReceipt is ERC721URIStorage, AxelarExecutable {
     using StringToAddress for string;
@@ -16,19 +16,11 @@ contract AcknowledgeReceipt is ERC721URIStorage, AxelarExecutable {
     // Indicate if the recipient has reveal the NFT content
     mapping(uint256 => address) reveal;
 
-    IAxelarGasService public immutable gasService;
-    string public chainName; // FIXME :: name of the chain this contract is deployed to
-
     string secretSmartContractAddress;
 
     event RevealEvent(uint256 indexed tokenId, address indexed recipient);
 
-    constructor(address gateway_, address gasReceiver_, string memory chainName_)
-        ERC721("AcknowledgeReceipt", "ART")
-        AxelarExecutable(gateway_)
-    {
-        
-    }
+    constructor() ERC721("AcknowledgeReceipt", "ART") {}
 
     function createReceipt(address _recipient, string memory tokenURI, string calldata encryptedMessage)
         public
@@ -43,7 +35,7 @@ contract AcknowledgeReceipt is ERC721URIStorage, AxelarExecutable {
         recipient[tokenId] = _recipient;
 
         // Store the encrypted part
-        _send_axelar_msg(encryptedMessage);
+        // FIXME :: call the secret path contract
 
         return tokenId;
     }
@@ -53,7 +45,8 @@ contract AcknowledgeReceipt is ERC721URIStorage, AxelarExecutable {
 
         reveal[tokenId] = msg.sender;
 
-        // _send_axelar_msg("reveal"); // FIXME :: Need to send an action data for the given tokenId and address
+        // Call secret smart contract
+        // FIXME :: Need to send an action data for the given tokenId and address
 
         emit RevealEvent(tokenId, msg.sender);
     }

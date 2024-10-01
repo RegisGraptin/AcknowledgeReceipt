@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import {ERC721} from "openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {ERC721URIStorage} from "openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721URIStorage} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-contract AcknowledgeReceipt is ERC721URIStorage, AxelarExecutable {
-    using StringToAddress for string;
-    using AddressToString for address;
-
+contract AcknowledgeReceipt is ERC721URIStorage {
+    
     uint256 private _nextTokenId;
 
     // Recipient of the given NFT

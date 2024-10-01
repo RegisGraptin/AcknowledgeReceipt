@@ -48,4 +48,8 @@ contract AcknowledgeReceipt is ERC721URIStorage {
 
         emit RevealEvent(tokenId, msg.sender);
     }
+
+    function getLastTokenId() public view returns(uint256) {
+        return _nextTokenId;
+    }
 }

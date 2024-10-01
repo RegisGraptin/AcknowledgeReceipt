@@ -1,6 +1,3 @@
 [submodule "public_nft/lib/openzeppelin-contracts"]
 	path = public_nft/lib/openzeppelin-contracts
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
-[submodule "public_nft/lib/axelar-gmp-sdk-solidity"]
-	path = public_nft/lib/axelar-gmp-sdk-solidity
-	url = https://github.com/axelarnetwork/axelar-gmp-sdk-solidity

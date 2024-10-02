@@ -1,10 +1,11 @@
 import type { NextPage } from 'next';
-import { Header } from '../components/Header';
+import { Header } from '../../components/Header';
 
 import { useReadContract, useReadContracts } from 'wagmi'
 
-import { abi } from "../../abi/AcknowledgeReceipt.json";
+import abi from "../../abi/AcknowledgeReceipt.json";
 import { Address } from 'viem';
+import { TokenCard } from '../../components/TokenCard';
 
 
 const Dashboard: NextPage = () => {
@@ -46,7 +47,7 @@ const Dashboard: NextPage = () => {
 
         <div>
           {tokensDetail && tokensDetail.map(function (tokenDetail, i) {
-            return <TokenCard key={i} grantDetail={tokenDetail.result} />
+            return <TokenCard key={i} tokenDetail={tokenDetail.result} />
           })}
 
         </div>

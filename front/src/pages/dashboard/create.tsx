@@ -9,9 +9,15 @@ import { FormEvent } from 'react';
 import { useWriteContract } from 'wagmi'
 import { Address } from 'viem';
 
+import { PinataSDK } from "pinata";
 
 const CreateAcknowledgeReceipt: NextPage = () => {
 
+  // Initialize Pinata storage
+  const pinata = new PinataSDK({
+    pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT!,
+    pinataGateway: process.env.NEXT_PUBLIC_PINATA_GATEWAY,
+  });
 
   // FIXME :: 
   let address = "0x000"
@@ -34,14 +40,17 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     const formData = new FormData(event.currentTarget)
     console.log(formData)
 
-
-    // formData.get("title")
-    // formData.get("description")
     // formData.get("recipient")
     // formData.get("privateDescription")
 
-    // FIXME ::
     // Store on IPFS the public data
+    const upload = await pinata.upload.json({
+      title: formData.get("title"),
+      description: formData.get("description"),
+    });
+
+    console.log("upload result");
+    console.log(upload);
 
 
     // Write to smart contract

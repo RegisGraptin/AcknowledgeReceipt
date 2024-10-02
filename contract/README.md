@@ -48,7 +48,11 @@ $ anvil
 ### Deploy
 
 ```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
+# To load the variables in the .env file
+source .env
+
+# To deploy and verify our contract
+forge script script/AcknowledgeReceipt.s.sol:AcknowledgeReceiptScript --rpc-url $SEI_RPC_URL --broadcast --verify -vvvv
 ```
 
 ### Cast

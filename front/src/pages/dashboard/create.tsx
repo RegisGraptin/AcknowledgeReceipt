@@ -4,14 +4,49 @@ import { Header } from '../../components/Header';
 import { BaseError, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 
 import abi from "../../abi/AcknowledgeReceipt.json";
-import { FormEvent } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 
 import { useWriteContract } from 'wagmi'
 import { Address } from 'viem';
 
 import { PinataSDK } from "pinata";
 
+import { SecretNetworkClient } from "secretjs";
+
+export interface PublicKeyResponse {
+  public_key: Array<number>;
+}
+
 const CreateAcknowledgeReceipt: NextPage = () => {
+
+  const [publicKey, setPublicKey] = useState<Uint8Array>();
+
+  useEffect(() => {
+
+    async function retrieveSecretPublicKey() {
+      const url = "https://lcd.testnet.secretsaturn.net";
+      // To create a readonly secret.js client, just pass in a LCD endpoint
+      const secretjs = new SecretNetworkClient({
+        chainId: "pulsar-3",
+        url,
+      });
+      let result = await secretjs.query.compute.queryContract({
+        contract_address: process.env.NEXT_PUBLIC_SECRET_CONTRACT_ADDRESS!,
+        code_hash: process.env.NEXT_PUBLIC_SECRET_CONTRACT_HASH,
+        query: { get_contract_key: {} },
+      }) as PublicKeyResponse;
+      if (!result) {
+        throw new Error(`Error when retrieving public key from the smart contract. ${JSON.stringify(result)}`);
+      }
+      setPublicKey(Uint8Array.from(result.public_key));
+    }
+
+    if (!publicKey) {
+      retrieveSecretPublicKey();
+    }
+  }, []);
+
+  
 
   // Initialize Pinata storage
   const pinata = new PinataSDK({

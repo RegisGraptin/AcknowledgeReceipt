@@ -22,8 +22,7 @@ use sha3::{Digest, Keccak256};
 
 use crate::error::ContractError;
 use crate::msg::{
-    AddNewAddressMsg, CreateReceiptMsg, ExecuteMsg, GatewayMsg,
-    InstantiateMsg, QueryMsg, QueryWithPermit, ResponseStoreMsg,
+    AddNewAddressMsg, ContractKeyResponse, CreateReceiptMsg, ExecuteMsg, GatewayMsg, InstantiateMsg, QueryMsg, QueryWithPermit, ResponseStoreMsg
 };
 use crate::state::{
     ContractKeys, State, CONFIG, CONTRACT_KEYS, FILE_CONTENT, FILE_PERMISSIONS,
@@ -350,9 +349,18 @@ fn _verify_permit(
 #[entry_point]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
+        QueryMsg::GetContractKey {} => to_binary(&query_key(deps)?),
         QueryMsg::WithPermit { permit, query } => permit_queries(deps, permit, query),
     }
 }
+
+fn query_key(deps: Deps) -> StdResult<ContractKeyResponse> {
+    let contract_keys = CONTRACT_KEYS.load(deps.storage)?;
+    Ok(ContractKeyResponse {
+        public_key: contract_keys.public_key,
+    })
+}
+
 
 fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<Binary, StdError> {
     // Verify the account through the permit

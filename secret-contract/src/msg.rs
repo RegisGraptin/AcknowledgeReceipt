@@ -65,6 +65,7 @@ impl HandleCallback for GatewayMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    GetContractKey {},
     WithPermit {
         permit: Permit,
         query: QueryWithPermit,
@@ -77,4 +78,9 @@ pub enum QueryWithPermit {
     RetrieveContent { 
         key: u128,
     },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, JsonSchema)]
+pub struct ContractKeyResponse {
+    pub public_key: Vec<u8>, 
 }

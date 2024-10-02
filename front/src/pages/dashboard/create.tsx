@@ -30,7 +30,20 @@ const CreateAcknowledgeReceipt: NextPage = () => {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+
     const formData = new FormData(event.currentTarget)
+    console.log(formData)
+
+
+    // formData.get("title")
+    // formData.get("description")
+    // formData.get("recipient")
+    // formData.get("privateDescription")
+
+    // FIXME ::
+    // Store on IPFS the public data
+
+
     // Write to smart contract
     writeContract({
       address: address as Address,

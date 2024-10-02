@@ -12,6 +12,7 @@ import { Address } from 'viem';
 import { PinataSDK } from "pinata";
 
 import { SecretNetworkClient } from "secretjs";
+import ECDHEncryption from '../../utils/ECDHEncryption';
 
 export interface PublicKeyResponse {
   public_key: Array<number>;
@@ -46,6 +47,39 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     }
   }, []);
 
+
+  // CreateReceiptMsg {
+  //     pub id: u128,
+  //     pub user: Addr,
+  //     pub content: {
+  //       pub payload: Vec<u8>,
+  //       pub public_key: Vec<u8>,
+  //   },
+  // }
+
+
+  async function encryptPayload(data: any){
+
+    // Use ECDH method, to generate local asymmetric keys.
+    const ECDHKeys = ECDHEncryption.generate();
+
+    const ECDHSharedKey = ECDHEncryption.generateSharedKey(
+      publicKey!,
+      ECDHKeys.privateKey,
+    );
+
+    // Encrypt the JSON with the public ECDH shared key.
+    const encryptedPayload = await ECDHEncryption.encrypt(
+      data,
+      ECDHSharedKey,
+    );
+
+    return {
+      payload: Array.from(encryptedPayload),
+      public_key: Array.from(ECDHKeys.publicKey),
+    };
+  }
+
   
 
   // Initialize Pinata storage
@@ -78,6 +112,9 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     // formData.get("recipient")
     // formData.get("privateDescription")
 
+
+    let payload = await encryptPayload(formData.get("privateDescription"));
+    
     // Store on IPFS the public data
     const upload = await pinata.upload.json({
       title: formData.get("title"),

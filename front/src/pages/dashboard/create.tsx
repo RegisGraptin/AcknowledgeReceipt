@@ -3,7 +3,7 @@ import { Header } from '../../components/Header';
 
 import { BaseError, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
 
-import abi from "../../abi/AcknowledgeReceipt.json";
+import AcknowledgeReceipt from "../../abi/AcknowledgeReceipt.json";
 import { FormEvent, useEffect, useState } from 'react';
 
 import { useWriteContract } from 'wagmi'
@@ -13,6 +13,8 @@ import { PinataSDK } from "pinata";
 
 import { SecretNetworkClient } from "secretjs";
 import ECDHEncryption from '../../utils/ECDHEncryption';
+import retrieveSecretPublicKey from '../../utils/SecretHelper';
+import encryptPayload from '../../utils/Encryption';
 
 export interface PublicKeyResponse {
   public_key: Array<number>;
@@ -23,73 +25,18 @@ const CreateAcknowledgeReceipt: NextPage = () => {
   const [publicKey, setPublicKey] = useState<Uint8Array>();
 
   useEffect(() => {
-
-    async function retrieveSecretPublicKey() {
-      const url = "https://lcd.testnet.secretsaturn.net";
-      // To create a readonly secret.js client, just pass in a LCD endpoint
-      const secretjs = new SecretNetworkClient({
-        chainId: "pulsar-3",
-        url,
-      });
-      let result = await secretjs.query.compute.queryContract({
-        contract_address: process.env.NEXT_PUBLIC_SECRET_CONTRACT_ADDRESS!,
-        code_hash: process.env.NEXT_PUBLIC_SECRET_CONTRACT_HASH,
-        query: { get_contract_key: {} },
-      }) as PublicKeyResponse;
-      if (!result) {
-        throw new Error(`Error when retrieving public key from the smart contract. ${JSON.stringify(result)}`);
-      }
-      setPublicKey(Uint8Array.from(result.public_key));
-    }
-
     if (!publicKey) {
-      retrieveSecretPublicKey();
+      retrieveSecretPublicKey().then((value) => {
+        setPublicKey(value);
+      });
     }
   }, []);
-
-
-  // CreateReceiptMsg {
-  //     pub id: u128,
-  //     pub user: Addr,
-  //     pub content: {
-  //       pub payload: Vec<u8>,
-  //       pub public_key: Vec<u8>,
-  //   },
-  // }
-
-
-  async function encryptPayload(data: any){
-
-    // Use ECDH method, to generate local asymmetric keys.
-    const ECDHKeys = ECDHEncryption.generate();
-
-    const ECDHSharedKey = ECDHEncryption.generateSharedKey(
-      publicKey!,
-      ECDHKeys.privateKey,
-    );
-
-    // Encrypt the JSON with the public ECDH shared key.
-    const encryptedPayload = await ECDHEncryption.encrypt(
-      data,
-      ECDHSharedKey,
-    );
-
-    return {
-      payload: Array.from(encryptedPayload),
-      public_key: Array.from(ECDHKeys.publicKey),
-    };
-  }
-
-  
 
   // Initialize Pinata storage
   const pinata = new PinataSDK({
     pinataJwt: process.env.NEXT_PUBLIC_PINATA_JWT!,
     pinataGateway: process.env.NEXT_PUBLIC_PINATA_GATEWAY,
   });
-
-  // FIXME :: 
-  let address = "0x000"
 
   const {
     data: hash,
@@ -105,35 +52,27 @@ const CreateAcknowledgeReceipt: NextPage = () => {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
-
     const formData = new FormData(event.currentTarget)
     console.log(formData)
 
-    // formData.get("recipient")
-    // formData.get("privateDescription")
-
-
-    let payload = await encryptPayload(formData.get("privateDescription"));
+    let payload = await encryptPayload(publicKey!, formData.get("privateDescription"));
     
-    // Store on IPFS the public data
-    const upload = await pinata.upload.json({
-      title: formData.get("title"),
-      description: formData.get("description"),
-    });
-
-    console.log("upload result");
-    console.log(upload);
-
+    // // Store on IPFS the public data
+    // const upload = await pinata.upload.json({
+    //   title: formData.get("title"),
+    //   description: formData.get("description"),
+    // });
 
     // Write to smart contract
     writeContract({
-      address: address as Address,
-      abi,
-      functionName: 'createGrantProposal',
+      address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
+      abi: AcknowledgeReceipt.abi,
+      functionName: 'createReceipt',
       args: [
-        formData.get("title"),
-        formData.get("description"),
-        formData.get("nb_projects"),
+        formData.get("recipient"),
+        // upload["cid"],
+        "bafkreidrlbll7aqg33xk2sm56pxjed67g4mjktvb3dmukyusivrtm3qndi",
+        payload
       ]
     })
 

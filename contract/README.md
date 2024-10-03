@@ -52,7 +52,7 @@ $ anvil
 source .env
 
 # To deploy and verify our contract
-forge script script/AcknowledgeReceipt.s.sol:AcknowledgeReceiptScript --rpc-url $SEI_RPC_URL --broadcast --verify -vvvv
+forge script script/AcknowledgeReceipt.s.sol:AcknowledgeReceiptScript --rpc-url $SEI_RPC_URL --broadcast --legacy -vvvv
 ```
 
 ### Cast

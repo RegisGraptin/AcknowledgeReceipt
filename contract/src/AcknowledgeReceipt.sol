@@ -99,13 +99,6 @@ contract AcknowledgeReceipt is ERC721URIStorage {
 
         // FIXME add a check on action to match existing one
 
-        bytes32 payloadHash = keccak256(
-            abi.encode(
-                "\x19Ethereum Signed Message:\n32",
-                keccak256(payload)
-            )
-        );
-
         bytes memory emptyBytes = hex"0000";
 
         Gateway.ExecutionInfo memory executionInfo = Gateway.ExecutionInfo({

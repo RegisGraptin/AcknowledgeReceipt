@@ -1,9 +1,25 @@
 import type { NextPage } from 'next';
 import { Header } from '../../components/Header';
 
-import { BaseError, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+import { BaseError, useAccount, useReadContract, useWaitForTransactionReceipt } from 'wagmi'
+
+import { ecdh, chacha20_poly1305_seal } from "@solar-republic/neutrino";
 
 import AcknowledgeReceipt from "../../abi/AcknowledgeReceipt.json";
+import Gateway from "../../abi/Gateway.json";
+
+import { hexlify, SigningKey, computeAddress, recoverAddress, keccak256, toBeHex } from "ethers";
+
+import {
+  bytes,
+  bytes_to_base64,
+  json_to_bytes,
+  sha256,
+  concat,
+  text_to_bytes,
+  base64_to_bytes,
+} from "@blake.regalia/belt";
+
 import { FormEvent, useEffect, useState } from 'react';
 
 import { useWriteContract } from 'wagmi'
@@ -15,6 +31,7 @@ import { SecretNetworkClient } from "secretjs";
 import ECDHEncryption from '../../utils/ECDHEncryption';
 import retrieveSecretPublicKey from '../../utils/SecretHelper';
 import encryptPayload from '../../utils/Encryption';
+import { ethers } from 'ethers';
 
 export interface PublicKeyResponse {
   public_key: Array<number>;
@@ -22,7 +39,9 @@ export interface PublicKeyResponse {
 
 const CreateAcknowledgeReceipt: NextPage = () => {
 
+  const { address } = useAccount();
   const [publicKey, setPublicKey] = useState<Uint8Array>();
+  
 
   useEffect(() => {
     if (!publicKey) {
@@ -55,8 +74,126 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     const formData = new FormData(event.currentTarget)
     console.log(formData)
 
-    let payload = await encryptPayload(publicKey!, formData.get("privateDescription"));
+    let data = await encryptPayload(publicKey!, formData.get("privateDescription"));
+    console.log(data);
+
+
     
+
+
+
+    const iface = new ethers.Interface(Gateway.abi);
+
+    const routing_contract = "secret1eh49wvgz6jkum4gfz2kep8nk3lzh2qr79xyfhl";
+    const routing_code_hash = "05ea2138f2d32726f4a6fa88ed7281e3d9c31fd2bf36e2a39c58f4ba2c210277";
+
+
+    const provider = new ethers.BrowserProvider(window.ethereum)
+    // const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
+
+    const myAddress = address;
+
+    const wallet = ethers.Wallet.createRandom();
+    const userPrivateKeyBytes = ethers.getBytes(wallet.privateKey);
+    const userPublicKey = new SigningKey(wallet.privateKey).compressedPublicKey;
+    const userPublicKeyBytes = ethers.getBytes(userPublicKey);
+    const gatewayPublicKey = "A20KrD7xDmkFXpNMqJn1CLpRaDLcdKpO1NdBBS7VpWh3";
+    const gatewayPublicKeyBytes = base64_to_bytes(gatewayPublicKey);
+
+    const sharedKey = await sha256(
+      ecdh(userPrivateKeyBytes, gatewayPublicKeyBytes)
+    );
+
+    const callbackSelector = iface.getFunction("upgradeHandler")?.selector;
+    const callbackGasLimit = 300000;
+
+
+    // Secret path address - Gateway SEI Devnet
+    let publicClientAddress = "0x8EaAB5e8551781F3E8eb745E7fcc7DAeEFd27b1f";
+
+    const callbackAddress = publicClientAddress.toLowerCase();
+    console.log("callback address: ", callbackAddress);
+    console.log("my data: ", data);
+
+    // Warning on the id as it cannot be modify as it will be seal
+    // Be sure to keep consistency in the secret smart contract!
+
+    // Payload construction
+    const payload = {
+      data: data,
+      routing_info: routing_contract,
+      routing_code_hash: routing_code_hash,
+      user_address: myAddress,
+      user_key: bytes_to_base64(userPublicKeyBytes),
+      callback_address: bytes_to_base64(ethers.getBytes(callbackAddress)),
+      callback_selector: bytes_to_base64(ethers.getBytes(callbackSelector!)),
+      callback_gas_limit: callbackGasLimit,
+    };
+
+    const plaintext = json_to_bytes(payload);
+    const nonce = crypto.getRandomValues(bytes(12));
+
+    const [ciphertextClient, tagClient] = chacha20_poly1305_seal(
+      sharedKey,
+      nonce,
+      plaintext
+    );
+    const ciphertext = concat([ciphertextClient, tagClient]);
+    const ciphertextHash = keccak256(ciphertext);
+    const payloadHash = keccak256(
+      concat([
+        text_to_bytes("\x19Ethereum Signed Message:\n32"),
+        ethers.getBytes(ciphertextHash),
+      ])
+    );
+    const msgParams = ciphertextHash;
+
+    const params = [myAddress, msgParams];
+    const method = "personal_sign";
+    const payloadSignature = await provider.send(method, params);
+    const user_pubkey = SigningKey.recoverPublicKey(payloadHash, payloadSignature);
+
+    const _info = {
+      user_key: hexlify(userPublicKeyBytes),
+      user_pubkey: user_pubkey,
+      routing_code_hash: routing_code_hash,
+      task_destination_network: "pulsar-3",
+      handle: "store",
+      nonce: hexlify(nonce),
+      payload: hexlify(ciphertext),
+      payload_signature: payloadSignature,
+      callback_gas_limit: callbackGasLimit,
+    };
+
+    const gasFee = Number((await provider.getFeeData()).gasPrice)
+    let amountOfGas = gasFee * callbackGasLimit * 3 / 2;
+
+    // Write to smart contract
+    writeContract({
+      address: "0x8EaAB5e8551781F3E8eb745E7fcc7DAeEFd27b1f" as Address,
+      abi: Gateway.abi,
+      functionName: 'send',
+      args: [
+        payloadHash,
+        myAddress,
+        routing_contract,
+        _info,
+      ],
+      value: BigInt(amountOfGas),
+    })
+
+
+
+
+
+
+
+
+
+
+
+
+
     // // Store on IPFS the public data
     // const upload = await pinata.upload.json({
     //   title: formData.get("title"),
@@ -64,17 +201,17 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     // });
 
     // Write to smart contract
-    writeContract({
-      address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
-      abi: AcknowledgeReceipt.abi,
-      functionName: 'createReceipt',
-      args: [
-        formData.get("recipient"),
-        // upload["cid"],
-        "bafkreidrlbll7aqg33xk2sm56pxjed67g4mjktvb3dmukyusivrtm3qndi",
-        payload
-      ]
-    })
+    // writeContract({
+    //   address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
+    //   abi: AcknowledgeReceipt.abi,
+    //   functionName: 'createReceipt',
+    //   args: [
+    //     formData.get("recipient")?.toString(),
+    //     // upload["cid"],
+    //     "bafkreidrlbll7aqg33xk2sm56pxjed67g4mjktvb3dmukyusivrtm3qndi",
+    //     payload
+    //   ]
+    // })
 
   }
 

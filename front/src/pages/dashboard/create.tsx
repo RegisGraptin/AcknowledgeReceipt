@@ -169,49 +169,41 @@ const CreateAcknowledgeReceipt: NextPage = () => {
     let amountOfGas = gasFee * callbackGasLimit * 3 / 2;
 
     // Write to smart contract
+    // writeContract({
+    //   address: "0x8EaAB5e8551781F3E8eb745E7fcc7DAeEFd27b1f" as Address,
+    //   abi: Gateway.abi,
+    //   functionName: 'send',
+    //   args: [
+    //     payloadHash,
+    //     myAddress,
+    //     routing_contract,
+    //     _info,
+    //   ],
+    //   value: BigInt(amountOfGas),
+    // })
+
+
+
+    // // Store on IPFS the public data
+    const upload = await pinata.upload.json({
+      title: formData.get("title"),
+      description: formData.get("description"),
+    });
+
+    // Write to smart contract
     writeContract({
-      address: "0x8EaAB5e8551781F3E8eb745E7fcc7DAeEFd27b1f" as Address,
-      abi: Gateway.abi,
-      functionName: 'send',
+      address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
+      abi: AcknowledgeReceipt.abi,
+      functionName: 'createReceipt',
       args: [
+        formData.get("recipient")?.toString(),
+        upload["cid"],
         payloadHash,
-        myAddress,
         routing_contract,
         _info,
       ],
       value: BigInt(amountOfGas),
     })
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // // Store on IPFS the public data
-    // const upload = await pinata.upload.json({
-    //   title: formData.get("title"),
-    //   description: formData.get("description"),
-    // });
-
-    // Write to smart contract
-    // writeContract({
-    //   address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
-    //   abi: AcknowledgeReceipt.abi,
-    //   functionName: 'createReceipt',
-    //   args: [
-    //     formData.get("recipient")?.toString(),
-    //     // upload["cid"],
-    //     "bafkreidrlbll7aqg33xk2sm56pxjed67g4mjktvb3dmukyusivrtm3qndi",
-    //     payload
-    //   ]
-    // })
 
   }
 

@@ -50,7 +50,10 @@ contract AcknowledgeReceipt is ERC721URIStorage {
     function createReceipt(
         address _recipient, 
         string memory tokenURI, 
-        string calldata encryptedMessage
+        // string calldata encryptedMessage,
+        bytes32 _payloadHash,
+        string calldata _routingInfo,
+        Gateway.ExecutionInfo calldata _info
     )
         public
         payable
@@ -63,15 +66,15 @@ contract AcknowledgeReceipt is ERC721URIStorage {
 
         recipient[tokenId] = _recipient;
 
-        // Store the encrypted part
-        // Payload need to match a 'CreateReceiptMsg'
-        bytes memory payload = abi.encode(
-            '{"id": ', tokenId, 
-            ',"user": ', msg.sender,
-            ', "content": ', encryptedMessage,
-            '}'
+        // FIXME :: The full payload should be created here
+        //          We should not rely on client side
+        Gateway gateway = Gateway(secretGatewayAddress);
+        gateway.send{value: msg.value}(
+            _payloadHash,
+            msg.sender,
+            _routingInfo,
+            _info
         );
-        sendMessage("store", payload);
 
         return tokenId;
     }
@@ -92,34 +95,34 @@ contract AcknowledgeReceipt is ERC721URIStorage {
     }
 
 
-    function sendMessage(string memory action, bytes memory payload) public {
-        // We expect only two type of message:
-        // "store" 
-        // "add_view"
+    // function sendMessage(string memory action, bytes memory payload) public {
+    //     // We expect only two type of message:
+    //     // "store" 
+    //     // "add_view"
 
-        // FIXME add a check on action to match existing one
+    //     // FIXME add a check on action to match existing one
 
-        bytes memory emptyBytes = hex"0000";
+    //     bytes memory emptyBytes = hex"0000";
 
-        Gateway.ExecutionInfo memory executionInfo = Gateway.ExecutionInfo({
-            user_key: emptyBytes,
-            user_pubkey: emptyBytes,
-            routing_code_hash: routing_code_hash,
-            task_destination_network: task_destination_network,
-            handle: action,
-            nonce: bytes12(0),
-            callback_gas_limit: 300000,
-            payload: payload,
-            payload_signature: emptyBytes
-        });
+    //     Gateway.ExecutionInfo memory executionInfo = Gateway.ExecutionInfo({
+    //         user_key: emptyBytes,
+    //         user_pubkey: emptyBytes,
+    //         routing_code_hash: routing_code_hash,
+    //         task_destination_network: task_destination_network,
+    //         handle: action,
+    //         nonce: bytes12(0),
+    //         callback_gas_limit: 300000,
+    //         payload: payload,
+    //         payload_signature: emptyBytes
+    //     });
 
-        Gateway gateway = Gateway(secretGatewayAddress);
-        gateway.send(
-            payloadHash,
-            msg.sender,
-            routing_contract,
-            executionInfo
-        );
-    }
+    //     Gateway gateway = Gateway(secretGatewayAddress);
+    //     gateway.send(
+    //         payloadHash,
+    //         msg.sender,
+    //         routing_contract,
+    //         executionInfo
+    //     );
+    // }
 
 }

@@ -17,7 +17,8 @@ contract AcknowledgeReceipt is ERC721URIStorage {
 
     uint256 private _nextTokenId;
 
-    // Recipient of the given NFT
+    // Original Sender & Recipient of the given NFT
+    mapping(uint256 => address) sender;
     mapping(uint256 => address) recipient;
 
     // Indicate if the recipient has reveal the NFT content
@@ -47,6 +48,10 @@ contract AcknowledgeReceipt is ERC721URIStorage {
         routing_contract = secretContract;
     }
 
+    function getSenderAndRecipient(uint256 tokenId) view public returns (address, address) {
+        return (sender[tokenId], recipient[tokenId]);
+    }
+
     function createReceipt(
         address _recipient, 
         string memory tokenURI, 
@@ -64,6 +69,7 @@ contract AcknowledgeReceipt is ERC721URIStorage {
         _mint(_recipient, tokenId);
         _setTokenURI(tokenId, tokenURI);
 
+        sender[tokenId] = msg.sender;
         recipient[tokenId] = _recipient;
 
         // FIXME :: The full payload should be created here

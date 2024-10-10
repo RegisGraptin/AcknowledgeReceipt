@@ -3,28 +3,25 @@ import { Header } from '../../components/Header';
 
 import { useReadContract, useReadContracts } from 'wagmi'
 
-import abi from "../../abi/AcknowledgeReceipt.json";
+import AcknowledgeReceipt from "../../abi/AcknowledgeReceipt.json";
 import { Address } from 'viem';
 import { TokenCard } from '../../components/TokenCard';
 
 
 const Dashboard: NextPage = () => {
 
-  // FIXME :: 
-  let address = "0x000"
-
   const { data: lastTokenId, isLoading: lastTokenIdLoading } = useReadContract({
-    address: address as Address,
-    abi,
+    address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
+    abi: AcknowledgeReceipt.abi,
     functionName: 'getLastTokenId',
     args: [],
   })
 
   const { data: tokensDetail, isLoading: tokensDetailLoading } = useReadContracts({
-    contracts: Array.from({ length: Number(lastTokenIdLoading) }).map(
+    contracts: Array.from({ length: Number(lastTokenId) }).map(
       (_, index) => ({
-        abi,
-        address: address as Address,
+        abi: AcknowledgeReceipt.abi,
+        address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
         functionName: "tokenURI",
         args: [index],
       })
@@ -35,25 +32,29 @@ const Dashboard: NextPage = () => {
     <div>
       <Header />
 
-      <section className='container mx-auto px-4'>
 
-        {lastTokenIdLoading && (
-          <div>Loading id..</div>
-        )}
+      <section className="bg-white pt-40">
+        <div className="gap-16 items-center py-8 px-4 mx-auto max-w-screen-xl lg:grid lg:grid-cols-3 lg:py-16 lg:px-6">
+        
 
-        {tokensDetailLoading && (
-          <div>Loading details..</div>
-        )}
+          {lastTokenIdLoading && (
+            <div>Loading id..</div>
+          )}
 
-        <div>
-          {tokensDetail && tokensDetail.map(function (tokenDetail, i) {
-            return <TokenCard key={i} tokenDetail={tokenDetail.result} />
-          })}
+          {tokensDetailLoading && (
+            <div>Loading details..</div>
+          )}
 
-        </div>
+          
+            {tokensDetail && tokensDetail.map(function (tokenDetail, i) {
+              return <TokenCard key={i} tokenId={i} tokenDetail={tokenDetail.result} />
+            })}
+          
 
 
-      </section>
+        
+          </div>
+        </section>
     </div>
   );
 };

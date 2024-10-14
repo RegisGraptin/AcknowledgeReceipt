@@ -199,9 +199,9 @@ const NFTDetailPage: NextPage = () => {
                             Get Access
                         </button>
 
-                        <pre className="bg-white p-4 rounded-md shadow-inner overflow-auto max-h-96">
+                        {/* <pre className="bg-white p-4 rounded-md shadow-inner overflow-auto max-h-96">
                             {JSON.stringify(tokenData, null, 2)}
-                        </pre>
+                        </pre> */}
                     </>
                 )}
                 {senderAndRecipient && address != senderAndRecipient[1] && (

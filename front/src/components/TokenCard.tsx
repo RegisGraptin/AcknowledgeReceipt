@@ -1,5 +1,3 @@
-import { PinataSDK } from "pinata";
-import { useEffect, useState } from "react";
 
 export const TokenCard = ({tokenId, tokenDetail}) => {
 

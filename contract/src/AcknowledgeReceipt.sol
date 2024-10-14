@@ -12,8 +12,8 @@ contract AcknowledgeReceipt is ERC721URIStorage {
     string constant public task_destination_network = "pulsar-3";
 
     // FIXME :: Contract conde hash
-    string public routing_contract = "secret1eh49wvgz6jkum4gfz2kep8nk3lzh2qr79xyfhl";
-    string constant public routing_code_hash = "05ea2138f2d32726f4a6fa88ed7281e3d9c31fd2bf36e2a39c58f4ba2c210277";
+    // string public routing_contract = "secret1eh49wvgz6jkum4gfz2kep8nk3lzh2qr79xyfhl";
+    // string constant public routing_code_hash = "05ea2138f2d32726f4a6fa88ed7281e3d9c31fd2bf36e2a39c58f4ba2c210277";
 
     uint256 private _nextTokenId;
 
@@ -22,7 +22,7 @@ contract AcknowledgeReceipt is ERC721URIStorage {
     mapping(uint256 => address) recipient;
 
     // Indicate if the recipient has reveal the NFT content
-    mapping(uint256 => address) reveal;
+    mapping(uint256 => address) public reveal;
 
     string secretSmartContractAddress;
 
@@ -44,9 +44,9 @@ contract AcknowledgeReceipt is ERC721URIStorage {
         owner = msg.sender;
     }
 
-    function setRoutingContractAddress(string memory secretContract) external onlyOwner {
-        routing_contract = secretContract;
-    }
+    // function setRoutingContractAddress(string memory secretContract) external onlyOwner {
+    //     routing_contract = secretContract;
+    // }
 
     function getSenderAndRecipient(uint256 tokenId) view public returns (address, address) {
         return (sender[tokenId], recipient[tokenId]);
@@ -85,13 +85,29 @@ contract AcknowledgeReceipt is ERC721URIStorage {
         return tokenId;
     }
 
-    function revealData(uint256 tokenId) public {
+    function revealData(
+        uint256 tokenId,
+        // string calldata encryptedMessage,
+        bytes32 _payloadHash,
+        string calldata _routingInfo,
+        Gateway.ExecutionInfo calldata _info
+    ) public payable {
         require(msg.sender == _ownerOf(tokenId), "NOT_OWNER");
 
         reveal[tokenId] = msg.sender;
 
         // Call secret smart contract
-        // FIXME :: Need to send an action data for the given tokenId and address
+        // FIXME: Need to built the payload in the smart contract else sneaky person can
+        // call send with the reveal inside...
+        // FIXME: The full payload should be created here
+        //          We should not rely on client side
+        Gateway gateway = Gateway(secretGatewayAddress);
+        gateway.send{value: msg.value}(
+            _payloadHash,
+            msg.sender,
+            _routingInfo,
+            _info
+        );
 
         emit RevealEvent(tokenId, msg.sender);
     }

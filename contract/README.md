@@ -54,17 +54,3 @@ source .env
 # To deploy and verify our contract
 forge script script/AcknowledgeReceipt.s.sol:AcknowledgeReceiptScript --rpc-url $SEI_RPC_URL --broadcast --legacy -vvvv
 ```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```

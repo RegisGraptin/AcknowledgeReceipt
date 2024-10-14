@@ -407,3 +407,85 @@ fn permit_queries(deps: Deps, permit: Permit, query: QueryWithPermit) -> Result<
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    
+    use super::*;
+
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::{coins, from_binary};
+    use secret_toolkit::permit::{PermitParams, PermitSignature, PubKey, TokenPermissions};
+    use secret_toolkit::serialization::Serde;
+
+    /// Instanciate a new smart contract
+    fn setup_contract(deps: DepsMut) {
+        // Instanciate our Secret Contract
+        let msg = InstantiateMsg {
+            gateway_address: deps.api.addr_validate("secret10ex7r7c4y704xyu086lf74ymhrqhypayfk7fkj").unwrap(),
+            gateway_hash: "012dd8efab9526dec294b6898c812ef6f6ad853e32172788f54ef3c305c1ecc5".to_string(),
+            gateway_key: Binary::from_base64("A20KrD7xDmkFXpNMqJn1CLpRaDLcdKpO1NdBBS7VpWh3").unwrap()
+        };
+        let info = mock_info("creator", &coins(0, ""));
+        let response = instantiate(deps, mock_env(), info, msg).unwrap();
+        assert_eq!(0, response.messages.len());
+    }
+
+    fn _query_contract_pubic_key(deps: Deps) -> ContractKeyResponse {
+        let query_msg = QueryMsg::GetContractKey {};
+        let response = query(deps, mock_env(), query_msg).unwrap();
+        let key_response: ContractKeyResponse = from_binary(&response).unwrap();
+        key_response
+    }
+
+    #[test]
+    fn test_contract_initialization() {
+        // Initialize the smart contract
+        let mut deps = mock_dependencies();
+        setup_contract(deps.as_mut());
+
+        // Check that the contract generate a public key
+        let key_response = _query_contract_pubic_key(deps.as_ref());
+        assert_eq!(33, key_response.public_key.len()); // We have an additional 1 byte prefix for the X-coordinate
+    }
+
+
+
+
+    #[test]
+    fn test_store_message() {
+        // Initialize the smart contract
+        let mut deps = mock_dependencies();
+        setup_contract(deps.as_mut());
+
+        let user_address = deps.as_ref().api.addr_validate("secret1f0pcrxqsgm3ss598nreq3lryv45xa8w7cq55df").unwrap();
+
+        let message : ExecuteMsg = ExecuteMsg::Input { message: PrivContractHandleMsg{
+            input_values: "{\"id\":0,\"user\":\"secret1thgqc840zwzkcwef0vf9ezkeh7ewajfpkw0ztm\",\"content\":{\"payload\":[19,169,198,93,93,240,153,99,247,116,104,219,224,179,246,101,33,39,30,250,159,39,109,255,183,81,44],\"public_key\":[2,159,127,210,253,84,226,255,63,39,233,231,185,188,2,117,162,35,111,80,172,181,88,30,243,7,245,181,46,137,157,250,144]}}".to_string(),
+            handle: "store".to_string(),
+            user_address: deps.as_ref().api.addr_validate("secret1thgqc840zwzkcwef0vf9ezkeh7ewajfpkw0ztm").unwrap(),
+            task: Task {
+                network: "pulsar-3".to_string(),
+                task_id: "1".to_string()
+            },
+            input_hash: Binary::from("0x05ff3fb8e7bfe66d06fa168ac59dd94710a7a7af8c049a360fef19ce907cdc33".as_bytes()),
+            signature: Binary::from("0x9c399f67addd89abd536b75545e71dbe90c65f57859056c9afd04b1809c1f7be53a5e89dda82e1746b7de30266b446f80d76984b9511976260ba336b8f82788c1b".as_bytes()),
+        }};
+
+        let info = MessageInfo {
+            sender: user_address.clone(),
+            funds: vec![],
+        };
+
+        let res_store_data = execute(
+            deps.as_mut(), 
+            mock_env(), 
+            info, 
+            message.clone());
+
+        assert!(res_store_data.is_ok());
+
+    }
+
+
+}

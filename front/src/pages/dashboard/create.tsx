@@ -27,7 +27,7 @@ import { Address } from 'viem';
 
 import { PinataSDK } from "pinata";
 
-import { SecretNetworkClient } from "secretjs";
+import { MetaMaskWallet, SecretNetworkClient } from "secretjs";
 import ECDHEncryption from '../../utils/ECDHEncryption';
 import retrieveSecretPublicKey from '../../utils/SecretHelper';
 import encryptPayload from '../../utils/Encryption';
@@ -41,7 +41,32 @@ const CreateAcknowledgeReceipt: NextPage = () => {
 
   const { address } = useAccount();
   const [publicKey, setPublicKey] = useState<Uint8Array>();
+  const [secretAddress, setSecretAddress] = useState<String>();
   
+  
+  useEffect(() => {
+    if (!address) { return; }
+    const init = async () => {
+      const wallet = await MetaMaskWallet.create(
+        window.ethereum,
+        address || ""
+      );
+      setSecretAddress(wallet.address);
+    };
+    init();
+  }, [address]);
+
+
+
+  const { data: lastTokenId, isLoading: lastTokenIdLoading } = useReadContract({
+    address: process.env.NEXT_PUBLIC_SEI_CONTRACT as Address,
+    abi: AcknowledgeReceipt.abi,
+    functionName: 'getLastTokenId',
+    args: [],
+  })
+
+
+
 
   useEffect(() => {
     if (!publicKey) {
@@ -71,27 +96,45 @@ const CreateAcknowledgeReceipt: NextPage = () => {
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (lastTokenIdLoading) { 
+      console.log("Wait token id loading...")
+      return; 
+    }
+
+
     const formData = new FormData(event.currentTarget)
     console.log(formData)
 
-    let data = await encryptPayload(publicKey!, formData.get("privateDescription"));
-    console.log(data);
+    let encryptedData = await encryptPayload(publicKey!, formData.get("privateDescription"));
+    console.log(encryptedData);
+    console.log(secretAddress);
 
+    let data = {
+      "id": Number(lastTokenId), // NFT Token ID
+      "user": secretAddress, // Have access with a secret address
+      "content": encryptedData 
+    };
+    console.log(data);
 
     
 
 
+    // Secret gateway contract "secret10ex7r7c4y704xyu086lf74ymhrqhypayfk7fkj"
+
 
     const iface = new ethers.Interface(Gateway.abi);
 
-    const routing_contract = "secret1eh49wvgz6jkum4gfz2kep8nk3lzh2qr79xyfhl";
-    const routing_code_hash = "05ea2138f2d32726f4a6fa88ed7281e3d9c31fd2bf36e2a39c58f4ba2c210277";
+    const routing_contract = process.env.NEXT_PUBLIC_SECRET_CONTRACT_ADDRESS;
+    const routing_code_hash = process.env.NEXT_PUBLIC_SECRET_CONTRACT_HASH;
 
 
     const provider = new ethers.BrowserProvider(window.ethereum)
     // const provider = new ethers.providers.Web3Provider(window.ethereum, "any");
 
-    const myAddress = address;
+    // const myAddress = address;
+    const [myAddress] = await provider.send("eth_requestAccounts", []);
+    console.log("myAddress - provider")
+    console.log(myAddress)
 
     const wallet = ethers.Wallet.createRandom();
     const userPrivateKeyBytes = ethers.getBytes(wallet.privateKey);
@@ -123,12 +166,15 @@ const CreateAcknowledgeReceipt: NextPage = () => {
       data: data,
       routing_info: routing_contract,
       routing_code_hash: routing_code_hash,
-      user_address: myAddress,
+      user_address: secretAddress, // example used eth address
       user_key: bytes_to_base64(userPublicKeyBytes),
       callback_address: bytes_to_base64(ethers.getBytes(callbackAddress)),
       callback_selector: bytes_to_base64(ethers.getBytes(callbackSelector!)),
       callback_gas_limit: callbackGasLimit,
     };
+
+    console.log("payload")
+    console.log(payload)
 
     const plaintext = json_to_bytes(payload);
     const nonce = crypto.getRandomValues(bytes(12));
@@ -164,6 +210,12 @@ const CreateAcknowledgeReceipt: NextPage = () => {
       payload_signature: payloadSignature,
       callback_gas_limit: callbackGasLimit,
     };
+
+    console.log("_info")
+    console.log(_info)
+
+    console.log("payloadHash")
+    console.log(payloadHash)
 
     const gasFee = Number((await provider.getFeeData()).gasPrice)
     let amountOfGas = gasFee * callbackGasLimit * 3 / 2;
